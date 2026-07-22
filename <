@@ -2,123 +2,63 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#09090B">
+    android:layout_height="80dp"
+    android:background="@drawable/glass_card_bg"
+    android:layout_marginBottom="8dp"
+    android:padding="12dp">
 
-    <!-- Chat Header -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/chat_header"
-        android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:background="#121218"
-        android:paddingHorizontal="12dp"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cv_avatar"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        app:cardCornerRadius="24dp"
+        app:cardBackgroundColor="#222232"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
-
         <ImageView
-            android:id="@+id/btn_chat_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_revert"
-            android:padding="10dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@android:drawable/ic_menu_compass"
+            android:padding="12dp" />
+    </androidx.cardview.widget.CardView>
 
-        <TextView
-            android:id="@+id/tv_detail_chat_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Aria Vance"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginStart="12dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@id/btn_chat_back"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/btn_video_call"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/presence_video_online"
-            android:padding="10dp"
-            android:layout_marginEnd="8dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btn_voice_call"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/btn_voice_call"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/sym_action_call"
-            android:padding="10dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <!-- Messages List -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_messages"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:padding="16dp"
-        android:clipToPadding="false"
-        app:layout_constraintBottom_toTopOf="@id/tv_typing_indicator"
-        app:layout_constraintTop_toBottomOf="@id/chat_header" />
-
-    <!-- Typing Indicator -->
     <TextView
-        android:id="@+id/tv_typing_indicator"
+        android:id="@+id/tv_item_chat_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Aria Vance"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginStart="12dp"
+        app:layout_constraintEnd_toStartOf="@id/tv_item_chat_time"
+        app:layout_constraintStart_toEndOf="@id/cv_avatar"
+        app:layout_constraintTop_toTopOf="@id/cv_avatar" />
+
+    <TextView
+        android:id="@+id/tv_item_chat_last_msg"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Let's build the rest of the features today."
+        android:textColor="#94A3B8"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/cv_avatar"
+        app:layout_constraintTop_toBottomOf="@id/tv_item_chat_name" />
+
+    <TextView
+        android:id="@+id/tv_item_chat_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Aria is typing..."
-        android:textColor="#00F5D4"
+        android:text="10:33 AM"
+        android:textColor="#A855F7"
         android:textSize="12sp"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/chat_input_bar"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Input Bar -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/chat_input_bar"
-        android:layout_width="match_parent"
-        android:layout_height="72dp"
-        android:background="#121218"
-        android:paddingHorizontal="12dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <EditText
-            android:id="@+id/et_message_input"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:hint="Type a message..."
-            android:textColorHint="#4B5563"
-            android:textColor="#FFFFFF"
-            android:paddingHorizontal="16dp"
-            android:background="@drawable/input_field_bg"
-            android:layout_marginEnd="12dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btn_send_message"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/btn_send_message"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/purple_glow_button"
-            android:src="@android:drawable/ic_menu_send"
-            android:padding="12dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tv_item_chat_name" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
