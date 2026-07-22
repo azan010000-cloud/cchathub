@@ -2,13 +2,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:gravity="start"
+    android:gravity="end"
     android:layout_marginBottom="12dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/receiver_bubble"
+        android:background="@drawable/sender_bubble"
         android:orientation="vertical"
         android:paddingHorizontal="14dp"
         android:paddingVertical="10dp"
@@ -18,7 +18,7 @@
             android:id="@+id/tv_msg_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Hey! Did you check the new premium dark UI design?"
+            android:text="Yes! The purple and cyan glow accents look absolutely stunning."
             android:textColor="#FFFFFF"
             android:textSize="15sp" />
 
@@ -26,8 +26,8 @@
             android:id="@+id/tv_msg_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="10:30 AM"
-            android:textColor="#94A3B8"
+            android:text="10:32 AM"
+            android:textColor="#E9D5FF"
             android:textSize="10sp"
             android:layout_gravity="end"
             android:layout_marginTop="4dp" />
