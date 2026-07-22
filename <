@@ -8,7 +8,7 @@
     android:padding="12dp">
 
     <androidx.cardview.widget.CardView
-        android:id="@+id/cv_status_avatar"
+        android:id="@+id/cv_call_avatar"
         android:layout_width="48dp"
         android:layout_height="48dp"
         app:cardCornerRadius="24dp"
@@ -19,12 +19,12 @@
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@android:drawable/ic_menu_camera"
+            android:src="@android:drawable/sym_action_call"
             android:padding="12dp" />
     </androidx.cardview.widget.CardView>
 
     <TextView
-        android:id="@+id/tv_item_status_name"
+        android:id="@+id/tv_item_call_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Aria Vance"
@@ -32,21 +32,31 @@
         android:textSize="16sp"
         android:textStyle="bold"
         android:layout_marginStart="12dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/cv_status_avatar"
-        app:layout_constraintTop_toTopOf="@id/cv_status_avatar" />
+        app:layout_constraintEnd_toStartOf="@id/iv_item_call_icon"
+        app:layout_constraintStart_toEndOf="@id/cv_call_avatar"
+        app:layout_constraintTop_toTopOf="@id/cv_call_avatar" />
 
     <TextView
-        android:id="@+id/tv_item_status_time"
+        android:id="@+id/tv_item_call_details"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="2 hours ago"
+        android:text="Incoming • Today, 11:15 AM"
         android:textColor="#94A3B8"
         android:textSize="13sp"
         android:layout_marginStart="12dp"
         android:layout_marginTop="4dp"
+        app:layout_constraintEnd_toStartOf="@id/iv_item_call_icon"
+        app:layout_constraintStart_toEndOf="@id/cv_call_avatar"
+        app:layout_constraintTop_toBottomOf="@id/tv_item_call_name" />
+
+    <ImageView
+        android:id="@+id/iv_item_call_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@android:drawable/presence_video_online"
+        android:contentDescription="Call Icon"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/cv_status_avatar"
-        app:layout_constraintTop_toBottomOf="@id/tv_item_status_name" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
