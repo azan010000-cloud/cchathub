@@ -1,53 +1,829 @@
-import android.app.Application;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.app.Dialog;
 import android.content.Context;
-import android.content.SharedPreferences;
-import androidx.appcompat.app.AppCompatDelegate;
-import com.google.gson.Gson;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 
-public class AppController extends Application {
-    private static AppController instance;
-    private SharedPreferences preferences;
-    private Gson gson;
+public class MainActivity extends AppCompatActivity {
+
+    // UI Elements
+    private FrameLayout fragmentContainer;
+    private ConstraintLayout topBar;
+    private ConstraintLayout bottomNavigation;
+    private TextView appLogo;
+    private ImageView btnHeaderAction;
+
+    private LinearLayout tabChats, tabFriends, tabStatus, tabCalls, tabProfile;
+    private ImageView iconChats, iconFriends, iconStatus, iconCalls, iconProfile;
+    private TextView textChats, textFriends, textStatus, textCalls, textProfile;
+
+    // State Management
+    private boolean isLoggedIn = false;
+    private User currentUser;
+    private String currentTab = "chats";
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    // In-Memory Database
+    private List<User> usersList = new ArrayList<>();
+    private List<Chat> chatsList = new ArrayList<>();
+    private List<CallLog> callsList = new ArrayList<>();
+    private List<StatusUpdate> statusList = new ArrayList<>();
 
     @Override
-    public void onCreate() {
-        super.onCreate();
-        instance = this;
-        preferences = getSharedPreferences("chathub_prefs", Context.MODE_PRIVATE);
-        gson = new Gson();
-        
-        // Force Dark Mode for Premium Dark Theme Identity
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // Initialize Views
+        fragmentContainer = findViewById(R.id.fragment_container);
+        topBar = findViewById(R.id.top_bar);
+        bottomNavigation = findViewById(R.id.bottom_navigation);
+        appLogo = findViewById(R.id.app_logo);
+        btnHeaderAction = findViewById(R.id.btn_header_action);
+
+        tabChats = findViewById(R.id.tab_chats);
+        tabFriends = findViewById(R.id.tab_friends);
+        tabStatus = findViewById(R.id.tab_status);
+        tabCalls = findViewById(R.id.tab_calls);
+        tabProfile = findViewById(R.id.tab_profile);
+
+        iconChats = findViewById(R.id.icon_chats);
+        iconFriends = findViewById(R.id.icon_friends);
+        iconStatus = findViewById(R.id.icon_status);
+        iconCalls = findViewById(R.id.icon_calls);
+        iconProfile = findViewById(R.id.icon_profile);
+
+        textChats = findViewById(R.id.text_chats);
+        textFriends = findViewById(R.id.text_friends);
+        textStatus = findViewById(R.id.text_status);
+        textCalls = findViewById(R.id.text_calls);
+        textProfile = findViewById(R.id.text_profile);
+
+        setupNavigation();
+        loadDatabase();
+        checkAuth();
     }
 
-    public static synchronized AppController getInstance() {
-        return instance;
+    private void checkAuth() {
+        isLoggedIn = AppController.getInstance().getBoolean("is_logged_in", false);
+        if (!isLoggedIn) {
+            topBar.setVisibility(View.GONE);
+            bottomNavigation.setVisibility(View.GONE);
+            showLoginScreen();
+        } else {
+            String userJson = AppController.getInstance().getString("current_user", "");
+            if (!userJson.isEmpty()) {
+                currentUser = AppController.getInstance().getGson().fromJson(userJson, User.class);
+                showHomeScreen();
+            } else {
+                showLoginScreen();
+            }
+        }
     }
 
-    public SharedPreferences getPreferences() {
-        return preferences;
+    private void setupNavigation() {
+        tabChats.setOnClickListener(v -> switchTab("chats"));
+        tabFriends.setOnClickListener(v -> switchTab("friends"));
+        tabStatus.setOnClickListener(v -> switchTab("status"));
+        tabCalls.setOnClickListener(v -> switchTab("calls"));
+        tabProfile.setOnClickListener(v -> switchTab("profile"));
     }
 
-    public Gson getGson() {
-        return gson;
+    private void switchTab(String tab) {
+        currentTab = tab;
+        resetTabColors();
+        topBar.setVisibility(View.VISIBLE);
+        bottomNavigation.setVisibility(View.VISIBLE);
+
+        switch (tab) {
+            case "chats":
+                iconChats.setColorFilter(Color.parseColor("#A855F7"));
+                textChats.setTextColor(Color.parseColor("#A855F7"));
+                appLogo.setText("ChatHub");
+                btnHeaderAction.setImageResource(android.R.drawable.ic_menu_add);
+                btnHeaderAction.setOnClickListener(v -> showGroupCreationDialog());
+                showChatsFragment();
+                break;
+            case "friends":
+                iconFriends.setColorFilter(Color.parseColor("#A855F7"));
+                textFriends.setTextColor(Color.parseColor("#A855F7"));
+                appLogo.setText("Friends");
+                btnHeaderAction.setImageResource(android.R.drawable.ic_menu_add);
+                btnHeaderAction.setOnClickListener(v -> showAddFriendDialog());
+                showFriendsFragment();
+                break;
+            case "status":
+                iconStatus.setColorFilter(Color.parseColor("#A855F7"));
+                textStatus.setTextColor(Color.parseColor("#A855F7"));
+                appLogo.setText("Status Updates");
+                btnHeaderAction.setImageResource(android.R.drawable.ic_menu_camera);
+                btnHeaderAction.setOnClickListener(v -> createNewStatus());
+                showStatusFragment();
+                break;
+            case "calls":
+                iconCalls.setColorFilter(Color.parseColor("#A855F7"));
+                textCalls.setTextColor(Color.parseColor("#A855F7"));
+                appLogo.setText("Call History");
+                btnHeaderAction.setImageResource(android.R.drawable.ic_menu_call);
+                btnHeaderAction.setOnClickListener(v -> initiateQuickCall());
+                showCallsFragment();
+                break;
+            case "profile":
+                iconProfile.setColorFilter(Color.parseColor("#A855F7"));
+                textProfile.setTextColor(Color.parseColor("#A855F7"));
+                appLogo.setText("My Profile");
+                btnHeaderAction.setImageResource(android.R.drawable.ic_menu_preferences);
+                btnHeaderAction.setOnClickListener(v -> showSettingsDialog());
+                showProfileFragment();
+                break;
+        }
     }
 
-    // Helper methods for local persistence
-    public void saveString(String key, String value) {
-        preferences.edit().putString(key, value).apply();
+    private void resetTabColors() {
+        int inactiveColor = Color.parseColor("#94A3B8");
+        iconChats.setColorFilter(inactiveColor);
+        textChats.setTextColor(inactiveColor);
+        iconFriends.setColorFilter(inactiveColor);
+        textFriends.setTextColor(inactiveColor);
+        iconStatus.setColorFilter(inactiveColor);
+        textStatus.setTextColor(inactiveColor);
+        iconCalls.setColorFilter(inactiveColor);
+        textCalls.setTextColor(inactiveColor);
+        iconProfile.setColorFilter(inactiveColor);
+        textProfile.setTextColor(inactiveColor);
     }
 
-    public String getString(String key, String defaultValue) {
-        return preferences.getString(key, defaultValue);
+    // --- DATABASE & MOCK ENGINE ---
+    private void loadDatabase() {
+        // Generate mock users if empty
+        usersList.add(new User("1", "Aria Vance", "aria_v", "+15550199", "aria@chathub.com", "Design is intelligence made visible. ✨", "Online", "Just now"));
+        usersList.add(new User("2", "Kai Sterling", "kai_s", "+15550188", "kai@chathub.com", "Coding in the dark.", "Offline", "2 hours ago"));
+        usersList.add(new User("3", "Luna Everly", "luna_e", "+15550177", "luna@chathub.com", "Living life in high definition.", "Online", "Active"));
+        usersList.add(new User("4", "Zane Phoenix", "zane_p", "+15550166", "zane@chathub.com", "Always building.", "Offline", "Yesterday"));
+
+        // Generate mock chats
+        Chat chat1 = new Chat("c1", "Aria Vance", false);
+        chat1.messages.add(new Message("1", "Hey! Did you check the new premium dark UI design?", "10:30 AM", true));
+        chat1.messages.add(new Message("me", "Yes! The purple and cyan glow accents look absolutely stunning.", "10:32 AM", false));
+        chat1.messages.add(new Message("1", "Awesome! Let's build the rest of the features today.", "10:33 AM", true));
+        chatsList.add(chat1);
+
+        Chat chat2 = new Chat("c2", "Kai Sterling", false);
+        chat2.messages.add(new Message("2", "Are we still on for the WebRTC video call integration?", "Yesterday", true));
+        chatsList.add(chat2);
+
+        // Mock Calls
+        callsList.add(new CallLog("Aria Vance", "Incoming", "Today, 11:15 AM", true, true));
+        callsList.add(new CallLog("Kai Sterling", "Outgoing", "Yesterday, 4:30 PM", false, false));
+
+        // Mock Statuses
+        statusList.add(new StatusUpdate("Aria Vance", "Designing the future...", "2 hours ago"));
+        statusList.add(new StatusUpdate("Luna Everly", "Coffee & Code ☕", "5 hours ago"));
     }
 
-    public void saveBoolean(String key, boolean value) {
-        preferences.edit().putBoolean(key, value).apply();
+    // --- AUTHENTICATION SCREENS ---
+    private void showLoginScreen() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.screen_login, fragmentContainer, false);
+
+        EditText etEmail = view.findViewById(R.id.et_login_email);
+        EditText etPassword = view.findViewById(R.id.et_login_password);
+        LinearLayout btnLogin = view.findViewById(R.id.btn_login);
+        TextView tvRegisterLink = view.findViewById(R.id.tv_register_link);
+
+        btnLogin.setOnClickListener(v -> {
+            String email = etEmail.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Simple Mock Authentication
+            currentUser = new User("me", "Alex Mercer", "alex_mercer", "+15550000", email, "Premium ChatHub User 🚀", "Online", "Active");
+            AppController.getInstance().saveBoolean("is_logged_in", true);
+            AppController.getInstance().saveString("current_user", AppController.getInstance().getGson().toJson(currentUser));
+            isLoggedIn = true;
+
+            showHomeScreen();
+        });
+
+        tvRegisterLink.setOnClickListener(v -> showRegisterScreen());
+        fragmentContainer.addView(view);
     }
 
-    public boolean getBoolean(String key, boolean defaultValue) {
-        return preferences.getBoolean(key, defaultValue);
+    private void showRegisterScreen() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.screen_register, fragmentContainer, false);
+
+        EditText etName = view.findViewById(R.id.et_reg_name);
+        EditText etUsername = view.findViewById(R.id.et_reg_username);
+        EditText etEmail = view.findViewById(R.id.et_reg_email);
+        EditText etPassword = view.findViewById(R.id.et_reg_password);
+        LinearLayout btnRegister = view.findViewById(R.id.btn_register);
+        TextView tvLoginLink = view.findViewById(R.id.tv_login_link);
+
+        btnRegister.setOnClickListener(v -> {
+            String name = etName.getText().toString().trim();
+            String username = etUsername.getText().toString().trim();
+            String email = etEmail.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
+
+            if (name.isEmpty() || username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            currentUser = new User("me", name, username, "+15550000", email, "Hey there! I am using ChatHub.", "Online", "Active");
+            AppController.getInstance().saveBoolean("is_logged_in", true);
+            AppController.getInstance().saveString("current_user", AppController.getInstance().getGson().toJson(currentUser));
+            isLoggedIn = true;
+
+            showHomeScreen();
+        });
+
+        tvLoginLink.setOnClickListener(v -> showLoginScreen());
+        fragmentContainer.addView(view);
+    }
+
+    private void showHomeScreen() {
+        topBar.setVisibility(View.VISIBLE);
+        bottomNavigation.setVisibility(View.VISIBLE);
+        switchTab("chats");
+    }
+
+    // --- CHATS FRAGMENT ---
+    private void showChatsFragment() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.fragment_chats, fragmentContainer, false);
+        RecyclerView rvChats = view.findViewById(R.id.rv_chats);
+        rvChats.setLayoutManager(new LinearLayoutManager(this));
+
+        ChatsAdapter adapter = new ChatsAdapter(chatsList, chat -> showChatDetailScreen(chat));
+        rvChats.setAdapter(adapter);
+
+        fragmentContainer.addView(view);
+    }
+
+    // --- FRIENDS FRAGMENT ---
+    private void showFriendsFragment() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.fragment_friends, fragmentContainer, false);
+        RecyclerView rvFriends = view.findViewById(R.id.rv_friends);
+        rvFriends.setLayoutManager(new LinearLayoutManager(this));
+
+        FriendsAdapter adapter = new FriendsAdapter(usersList, user -> {
+            // Start a new chat with selected friend
+            Chat existingChat = null;
+            for (Chat c : chatsList) {
+                if (c.chatName.equals(user.name)) {
+                    existingChat = c;
+                    break;
+                }
+            }
+            if (existingChat == null) {
+                existingChat = new Chat("c_" + System.currentTimeMillis(), user.name, false);
+                chatsList.add(0, existingChat);
+            }
+            showChatDetailScreen(existingChat);
+        });
+        rvFriends.setAdapter(adapter);
+
+        fragmentContainer.addView(view);
+    }
+
+    // --- STATUS FRAGMENT ---
+    private void showStatusFragment() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.fragment_status, fragmentContainer, false);
+        RecyclerView rvStatus = view.findViewById(R.id.rv_status);
+        rvStatus.setLayoutManager(new LinearLayoutManager(this));
+
+        StatusAdapter adapter = new StatusAdapter(statusList, status -> showStatusViewer(status));
+        rvStatus.setAdapter(adapter);
+
+        fragmentContainer.addView(view);
+    }
+
+    // --- CALLS FRAGMENT ---
+    private void showCallsFragment() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.fragment_calls, fragmentContainer, false);
+        RecyclerView rvCalls = view.findViewById(R.id.rv_calls);
+        rvCalls.setLayoutManager(new LinearLayoutManager(this));
+
+        CallsAdapter adapter = new CallsAdapter(callsList, call -> startVideoCall(call.callerName, call.isVideo));
+        rvCalls.setAdapter(adapter);
+
+        fragmentContainer.addView(view);
+    }
+
+    // --- PROFILE FRAGMENT ---
+    private void showProfileFragment() {
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.fragment_profile, fragmentContainer, false);
+
+        TextView tvProfileName = view.findViewById(R.id.tv_profile_name);
+        TextView tvProfileUsername = view.findViewById(R.id.tv_profile_username);
+        TextView tvProfileBio = view.findViewById(R.id.tv_profile_bio);
+        LinearLayout btnLogout = view.findViewById(R.id.btn_logout);
+
+        if (currentUser != null) {
+            tvProfileName.setText(currentUser.name);
+            tvProfileUsername.setText("@" + currentUser.username);
+            tvProfileBio.setText(currentUser.bio);
+        }
+
+        btnLogout.setOnClickListener(v -> {
+            AppController.getInstance().saveBoolean("is_logged_in", false);
+            isLoggedIn = false;
+            topBar.setVisibility(View.GONE);
+            bottomNavigation.setVisibility(View.GONE);
+            showLoginScreen();
+        });
+
+        fragmentContainer.addView(view);
+    }
+
+    // --- INDIVIDUAL CHAT SCREEN ---
+    private void showChatDetailScreen(Chat chat) {
+        topBar.setVisibility(View.GONE);
+        bottomNavigation.setVisibility(View.GONE);
+
+        fragmentContainer.removeAllViews();
+        View view = LayoutInflater.from(this).inflate(R.layout.screen_chat_detail, fragmentContainer, false);
+
+        TextView tvChatName = view.findViewById(R.id.tv_detail_chat_name);
+        ImageView btnBack = view.findViewById(R.id.btn_chat_back);
+        ImageView btnVoiceCall = view.findViewById(R.id.btn_voice_call);
+        ImageView btnVideoCall = view.findViewById(R.id.btn_video_call);
+        RecyclerView rvMessages = view.findViewById(R.id.rv_messages);
+        EditText etMessageInput = view.findViewById(R.id.et_message_input);
+        ImageView btnSendMessage = view.findViewById(R.id.btn_send_message);
+        TextView tvTypingIndicator = view.findViewById(R.id.tv_typing_indicator);
+
+        tvChatName.setText(chat.chatName);
+
+        rvMessages.setLayoutManager(new LinearLayoutManager(this));
+        MessagesAdapter adapter = new MessagesAdapter(chat.messages);
+        rvMessages.setAdapter(adapter);
+        rvMessages.scrollToPosition(chat.messages.size() - 1);
+
+        btnBack.setOnClickListener(v -> {
+            topBar.setVisibility(View.getSystemUiVisibility());
+            switchTab("chats");
+        });
+
+        btnVoiceCall.setOnClickListener(v -> startVideoCall(chat.chatName, false));
+        btnVideoCall.setOnClickListener(v -> startVideoCall(chat.chatName, true));
+
+        btnSendMessage.setOnClickListener(v -> {
+            String text = etMessageInput.getText().toString().trim();
+            if (!text.isEmpty()) {
+                chat.messages.add(new Message("me", text, "Just now", false));
+                adapter.notifyItemInserted(chat.messages.size() - 1);
+                rvMessages.scrollToPosition(chat.messages.size() - 1);
+                etMessageInput.setText("");
+
+                // Trigger Simulated Smart Reply
+                simulateReply(chat, adapter, rvMessages, tvTypingIndicator);
+            }
+        });
+
+        fragmentContainer.addView(view);
+    }
+
+    private void simulateReply(Chat chat, MessagesAdapter adapter, RecyclerView rv, TextView typingIndicator) {
+        typingIndicator.setVisibility(View.VISIBLE);
+        typingIndicator.setText(chat.chatName + " is typing...");
+
+        mainHandler.postDelayed(() -> {
+            typingIndicator.setVisibility(View.GONE);
+            String[] replies = {
+                "That sounds amazing! Let's do it.",
+                "I'm working on the premium dark theme right now.",
+                "Can we jump on a quick video call?",
+                "Got it! I will update the repository.",
+                "ChatHub is looking incredibly polished! 🔥"
+            };
+            String randomReply = replies[new Random().nextInt(replies.length)];
+            chat.messages.add(new Message("reply", randomReply, "Just now", true));
+            adapter.notifyItemInserted(chat.messages.size() - 1);
+            rv.scrollToPosition(chat.messages.size() - 1);
+        }, 2500);
+    }
+
+    // --- VIDEO & VOICE CALL SYSTEM ---
+    private void startVideoCall(String name, boolean isVideo) {
+        Dialog callDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        View view = LayoutInflater.from(this).inflate(R.layout.screen_video_call, null);
+        callDialog.setContentView(view);
+
+        TextView tvCallerName = view.findViewById(R.id.tv_call_name);
+        TextView tvCallStatus = view.findViewById(R.id.tv_call_status);
+        ImageView btnEndCall = view.findViewById(R.id.btn_end_call);
+        ImageView ivCameraPreview = view.findViewById(R.id.iv_camera_preview);
+
+        tvCallerName.setText(name);
+        tvCallStatus.setText(isVideo ? "HD Video Call Connecting..." : "Voice Call Connecting...");
+
+        if (!isVideo) {
+            ivCameraPreview.setVisibility(View.GONE);
+        }
+
+        btnEndCall.setOnClickListener(v -> {
+            callsList.add(0, new CallLog(name, "Outgoing", "Just now", isVideo, false));
+            callDialog.dismiss();
+        });
+
+        callDialog.show();
+    }
+
+    // --- STATUS VIEWER ---
+    private void showStatusViewer(StatusUpdate status) {
+        Dialog statusDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        View view = LayoutInflater.from(this).inflate(R.layout.screen_status_viewer, null);
+        statusDialog.setContentView(view);
+
+        TextView tvName = view.findViewById(R.id.tv_status_viewer_name);
+        TextView tvContent = view.findViewById(R.id.tv_status_viewer_content);
+        View progress = view.findViewById(R.id.status_progress_bar);
+
+        tvName.setText(status.userName);
+        tvContent.setText(status.statusText);
+
+        // Animate progress bar
+        progress.setScaleX(0);
+        progress.animate().scaleX(1).setDuration(4000).setListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                statusDialog.dismiss();
+            }
+        }).start();
+
+        statusDialog.show();
+    }
+
+    // --- DIALOGS & UTILITIES ---
+    private void showGroupCreationDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_create_group);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+
+        EditText etGroupName = dialog.findViewById(R.id.et_group_name);
+        LinearLayout btnCreate = dialog.findViewById(R.id.btn_create_group_confirm);
+
+        btnCreate.setOnClickListener(v -> {
+            String name = etGroupName.getText().toString().trim();
+            if (!name.isEmpty()) {
+                Chat newGroup = new Chat("g_" + System.currentTimeMillis(), name, true);
+                newGroup.messages.add(new Message("system", "You created the group \"" + name + "\"", "Just now", false));
+                chatsList.add(0, newGroup);
+                dialog.dismiss();
+                switchTab("chats");
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showAddFriendDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_add_friend);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+
+        EditText etFriendUsername = dialog.findViewById(R.id.et_friend_username);
+        LinearLayout btnAdd = dialog.findViewById(R.id.btn_add_friend_confirm);
+
+        btnAdd.setOnClickListener(v -> {
+            String username = etFriendUsername.getText().toString().trim();
+            if (!username.isEmpty()) {
+                User newUser = new User("u_" + System.currentTimeMillis(), username, username, "+15550000", username + "@chathub.com", "Hey! Let's chat.", "Online", "Active");
+                usersList.add(newUser);
+                dialog.dismiss();
+                switchTab("friends");
+                Toast.makeText(this, "Friend added successfully!", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void createNewStatus() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_create_status);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+
+        EditText etStatusText = dialog.findViewById(R.id.et_status_text);
+        LinearLayout btnPost = dialog.findViewById(R.id.btn_post_status);
+
+        btnPost.setOnClickListener(v -> {
+            String text = etStatusText.getText().toString().trim();
+            if (!text.isEmpty()) {
+                statusList.add(0, new StatusUpdate("My Status", text, "Just now"));
+                dialog.dismiss();
+                switchTab("status");
+                Toast.makeText(this, "Status updated!", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void initiateQuickCall() {
+        if (!usersList.isEmpty()) {
+            startVideoCall(usersList.get(0).name, true);
+        }
+    }
+
+    private void showSettingsDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_settings);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
+    // --- DATA MODELS ---
+    public static class User {
+        public String uid, name, username, phone, email, bio, onlineStatus, lastSeen;
+        public User(String uid, String name, String username, String phone, String email, String bio, String onlineStatus, String lastSeen) {
+            this.uid = uid; this.name = name; this.username = username; this.phone = phone;
+            this.email = email; this.bio = bio; this.onlineStatus = onlineStatus; this.lastSeen = lastSeen;
+        }
+    }
+
+    public static class Message {
+        public String senderId, text, timestamp;
+        public boolean isIncoming;
+        public Message(String senderId, String text, String timestamp, boolean isIncoming) {
+            this.senderId = senderId; this.text = text; this.timestamp = timestamp; this.isIncoming = isIncoming;
+        }
+    }
+
+    public static class Chat {
+        public String chatId, chatName;
+        public boolean isGroup;
+        public List<Message> messages = new ArrayList<>();
+        public Chat(String chatId, String chatName, boolean isGroup) {
+            this.chatId = chatId; this.chatName = chatName; this.isGroup = isGroup;
+        }
+    }
+
+    public static class CallLog {
+        public String callerName, callType, timestamp;
+        public boolean isVideo, isMissed;
+        public CallLog(String callerName, String callType, String timestamp, boolean isVideo, boolean isMissed) {
+            this.callerName = callerName; this.callType = callType; this.timestamp = timestamp; this.isVideo = isVideo; this.isMissed = isMissed;
+        }
+    }
+
+    public static class StatusUpdate {
+        public String userName, statusText, timestamp;
+        public StatusUpdate(String userName, String statusText, String timestamp) {
+            this.userName = userName; this.statusText = statusText; this.timestamp = timestamp;
+        }
+    }
+
+    // --- RECYCLERVIEW ADAPTERS ---
+    private class ChatsAdapter extends RecyclerView.Adapter<ChatsAdapter.ViewHolder> {
+        private final List<Chat> list;
+        private final OnChatClickListener listener;
+
+        public interface OnChatClickListener { void onChatClick(Chat chat); }
+
+        public ChatsAdapter(List<Chat> list, OnChatClickListener listener) {
+            this.list = list; this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_chat, parent, false);
+            return new ViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            Chat chat = list[position];
+            holder.tvName.setText(chat.chatName);
+            if (!chat.messages.isEmpty()) {
+                holder.tvLastMsg.setText(chat.messages.get(chat.messages.size() - 1).text);
+                holder.tvTime.setText(chat.messages.get(chat.messages.size() - 1).timestamp);
+            } else {
+                holder.tvLastMsg.setText("No messages yet");
+                holder.tvTime.setText("");
+            }
+            holder.itemView.setOnClickListener(v -> listener.onChatClick(chat));
+        }
+
+        @Override
+        public int getItemCount() { return list.size(); }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvName, tvLastMsg, tvTime;
+            ViewHolder(View v) {
+                super(v);
+                tvName = v.findViewById(R.id.tv_item_chat_name);
+                tvLastMsg = v.findViewById(R.id.tv_item_chat_last_msg);
+                tvTime = v.findViewById(R.id.tv_item_chat_time);
+            }
+        }
+    }
+
+    private class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.ViewHolder> {
+        private final List<User> list;
+        private final OnFriendClickListener listener;
+
+        public interface OnFriendClickListener { void onFriendClick(User user); }
+
+        public FriendsAdapter(List<User> list, OnFriendClickListener listener) {
+            this.list = list; this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
+            return new ViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            User user = list[position];
+            holder.tvName.setText(user.name);
+            holder.tvBio.setText(user.bio);
+            holder.tvStatus.setText(user.onlineStatus);
+            holder.tvStatus.setTextColor(user.onlineStatus.equals("Online") ? Color.parseColor("#00F5D4") : Color.parseColor("#94A3B8"));
+            holder.itemView.setOnClickListener(v -> listener.onFriendClick(user));
+        }
+
+        @Override
+        public int getItemCount() { return list.size(); }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvName, tvBio, tvStatus;
+            ViewHolder(View v) {
+                super(v);
+                tvName = v.findViewById(R.id.tv_item_friend_name);
+                tvBio = v.findViewById(R.id.tv_item_friend_bio);
+                tvStatus = v.findViewById(R.id.tv_item_friend_status);
+            }
+        }
+    }
+
+    private class StatusAdapter extends RecyclerView.Adapter<StatusAdapter.ViewHolder> {
+        private final List<StatusUpdate> list;
+        private final OnStatusClickListener listener;
+
+        public interface OnStatusClickListener { void onStatusClick(StatusUpdate status); }
+
+        public StatusAdapter(List<StatusUpdate> list, OnStatusClickListener listener) {
+            this.list = list; this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_status, parent, false);
+            return new ViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            StatusUpdate status = list[position];
+            holder.tvName.setText(status.userName);
+            holder.tvTime.setText(status.timestamp);
+            holder.itemView.setOnClickListener(v -> listener.onStatusClick(status));
+        }
+
+        @Override
+        public int getItemCount() { return list.size(); }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvName, tvTime;
+            ViewHolder(View v) {
+                super(v);
+                tvName = v.findViewById(R.id.tv_item_status_name);
+                tvTime = v.findViewById(R.id.tv_item_status_time);
+            }
+        }
+    }
+
+    private class CallsAdapter extends RecyclerView.Adapter<CallsAdapter.ViewHolder> {
+        private final List<CallLog> list;
+        private final OnCallClickListener listener;
+
+        public interface OnCallClickListener { void onCallClick(CallLog call); }
+
+        public CallsAdapter(List<CallLog> list, OnCallClickListener listener) {
+            this.list = list; this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_call, parent, false);
+            return new ViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            CallLog call = list[position];
+            holder.tvName.setText(call.callerName);
+            holder.tvDetails.setText(call.callType + " • " + call.timestamp);
+            holder.ivIcon.setImageResource(call.isVideo ? android.R.drawable.presence_video_online : android.R.drawable.sym_action_call);
+            holder.itemView.setOnClickListener(v -> listener.onCallClick(call));
+        }
+
+        @Override
+        public int getItemCount() { return list.size(); }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvName, tvDetails;
+            ImageView ivIcon;
+            ViewHolder(View v) {
+                super(v);
+                tvName = v.findViewById(R.id.tv_item_call_name);
+                tvDetails = v.findViewById(R.id.tv_item_call_details);
+                ivIcon = v.findViewById(R.id.iv_item_call_icon);
+            }
+        }
+    }
+
+    private class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHolder> {
+        private final List<Message> list;
+
+        public MessagesAdapter(List<Message> list) { this.list = list; }
+
+        @Override
+        public int getItemViewType(int position) {
+            return list.get(position).isIncoming ? 0 : 1;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(
+                viewType == 0 ? R.layout.item_message_incoming : R.layout.item_message_outgoing,
+                parent, false
+            );
+            return new ViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            Message msg = list[position];
+            holder.tvText.setText(msg.text);
+            holder.tvTime.setText(msg.timestamp);
+        }
+
+        @Override
+        public int getItemCount() { return list.size(); }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvText, tvTime;
+            ViewHolder(View v) {
+                super(v);
+                tvText = v.findViewById(R.id.tv_msg_text);
+                tvTime = v.findViewById(R.id.tv_msg_time);
+            }
+        }
     }
 }
