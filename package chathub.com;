@@ -1,0 +1,53 @@
+import android.app.Application;
+import android.content.Context;
+import android.content.SharedPreferences;
+import androidx.appcompat.app.AppCompatDelegate;
+import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
+
+public class AppController extends Application {
+    private static AppController instance;
+    private SharedPreferences preferences;
+    private Gson gson;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
+        preferences = getSharedPreferences("chathub_prefs", Context.MODE_PRIVATE);
+        gson = new Gson();
+        
+        // Force Dark Mode for Premium Dark Theme Identity
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+    }
+
+    public static synchronized AppController getInstance() {
+        return instance;
+    }
+
+    public SharedPreferences getPreferences() {
+        return preferences;
+    }
+
+    public Gson getGson() {
+        return gson;
+    }
+
+    // Helper methods for local persistence
+    public void saveString(String key, String value) {
+        preferences.edit().putString(key, value).apply();
+    }
+
+    public String getString(String key, String defaultValue) {
+        return preferences.getString(key, defaultValue);
+    }
+
+    public void saveBoolean(String key, boolean value) {
+        preferences.edit().putBoolean(key, value).apply();
+    }
+
+    public boolean getBoolean(String key, boolean defaultValue) {
+        return preferences.getBoolean(key, defaultValue);
+    }
+}
