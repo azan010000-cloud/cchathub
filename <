@@ -9,24 +9,25 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Add Friend"
+        android:text="Update Status"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         android:textStyle="bold" />
 
     <EditText
-        android:id="@+id/et_friend_username"
+        android:id="@+id/et_status_text"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:hint="Username or Phone"
+        android:layout_height="100dp"
+        android:hint="What's on your mind?"
         android:textColorHint="#4B5563"
         android:textColor="#FFFFFF"
-        android:paddingHorizontal="16dp"
+        android:padding="16dp"
+        android:gravity="top"
         android:background="@drawable/input_field_bg"
         android:layout_marginTop="20dp" />
 
     <LinearLayout
-        android:id="@+id/btn_add_friend_confirm"
+        android:id="@+id/btn_post_status"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:background="@drawable/purple_glow_button"
@@ -36,7 +37,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send Request"
+            android:text="Post Status"
             android:textColor="#FFFFFF"
             android:textStyle="bold" />
     </LinearLayout>
